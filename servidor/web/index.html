@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1E7A4C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cuidado G7">
+<title>Panel de Cuidado · Grupo 7</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icono-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============ PANTALLA DE ENTRADA ============ -->
+<section class="entrada" id="entrada">
+  <div class="entrada-caja">
+    <img src="icono.svg" alt="" class="logo">
+    <h1>Localizador de cuidado</h1>
+    <p class="muted">Grupo 7 · ARC115</p>
+
+    <div class="pill-estado" id="pillEstado">
+      <span class="pill-punto"></span>
+      <div><div class="pill-t" id="pillTitulo">Consultando el dispositivo…</div><div class="pill-s" id="pillSub"></div></div>
+    </div>
+
+    <form class="form" id="formLogin" hidden>
+      <label>Clave de acceso<input id="lgClave" type="password" autocomplete="current-password" required></label>
+      <button class="btn btn-ancho" type="submit">Entrar</button>
+    </form>
+
+    <button class="btn btn-ancho" id="btnEntrar" hidden>Entrar al panel</button>
+
+    <form class="form" id="formInicial" hidden>
+      <p class="small">Primera vez: crea la clave con la que entrarán los encargados.</p>
+      <label>Clave del dispositivo<input id="inDisp" autocomplete="off" required placeholder="La de CLAVE_DISPOSITIVO"></label>
+      <label>Nombre de la persona bajo cuidado<input id="inPaciente" maxlength="60" required></label>
+      <label>Nueva clave de acceso (mín. 6)<input id="inClave" type="password" minlength="6" autocomplete="new-password" required></label>
+      <label>Repite la clave<input id="inClave2" type="password" minlength="6" autocomplete="new-password" required></label>
+      <button class="btn btn-ancho" type="submit">Configurar</button>
+    </form>
+    <p class="error" id="entradaError" hidden></p>
+  </div>
+</section>
+
+<!-- ============ ASISTENTE INICIAL ============ -->
+<section class="entrada" id="asistente" hidden>
+  <div class="entrada-caja asistente">
+    <div class="pasos" id="pasos"><i class="on"></i><i></i><i></i></div>
+
+    <div class="paso" data-paso="1">
+      <h2>Notificaciones</h2>
+      <p>Activa los avisos en este celular o computadora. Llegan aunque la app esté cerrada.</p>
+      <div class="notif-box" data-notif></div>
+      <div class="fila-btns fin"><button class="btn btn-sec" data-sig>Siguiente</button></div>
+    </div>
+
+    <div class="paso" data-paso="2" hidden>
+      <h2>Perímetro por señal Wi-Fi</h2>
+      <p>El perímetro es el alcance de la señal del Wi-Fi de la casa. Lleva el dispositivo al <b>borde de la zona segura</b> (la puerta o el portón), espera unos segundos y toca <b>Fijar límite aquí</b>.</p>
+      <div class="wifi-box" data-wifi></div>
+      <div class="fila-btns fin"><button class="btn btn-sec" data-ant>Atrás</button><button class="btn btn-sec" data-sig>Siguiente</button></div>
+    </div>
+
+    <div class="paso" data-paso="3" hidden>
+      <h2>Ubicación de la casa</h2>
+      <p>Se marca en el mapa como la posición del Wi-Fi, y se usa cuando el GPS no tiene señal (dentro de la casa).</p>
+      <div class="casa-box" data-casa></div>
+      <div class="fila-btns fin"><button class="btn btn-sec" data-ant>Atrás</button><button class="btn" id="btnTerminar">Terminar</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ APP ============ -->
+<div class="app" id="app" hidden>
+  <header class="top">
+    <h1 id="titulo">Panel de Cuidado</h1>
+    <span class="badge-demo" id="badgeDemo" hidden title="Hay datos de demostración">DEMO</span>
+    <button class="icon-btn" id="btnAjustes" aria-label="Ajustes">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>
+    </button>
+  </header>
+  <div class="conn" id="conn" hidden></div>
+
+  <main>
+    <!-- INICIO -->
+    <section class="vista" id="v-inicio">
+      <div class="estado" id="estadoCard">
+        <div class="estado-icono" id="estadoIcono"></div>
+        <div class="estado-titulo" id="estadoTitulo"></div>
+        <div class="estado-sub" id="estadoSub"></div>
+        <div class="estado-meta" id="estadoMeta"></div>
+        <button class="btn btn-danger" id="btnAtenderSOS" hidden>Marcar ayuda como atendida</button>
+        <button class="btn" id="btnIrCalibrar" hidden>Calibrar perímetro Wi-Fi</button>
+      </div>
+
+      <div class="card mapa-card">
+        <div class="mapa-wrap">
+          <div class="mapa" id="mapa"></div>
+          <a class="mapa-link" id="mapaLink" target="_blank" rel="noopener" aria-label="Abrir en Google Maps"><span>Toca para abrir en Google Maps</span></a>
+        </div>
+        <div class="mapa-pie">
+          <div class="ubic">
+            <div class="ubic-fila"><span class="mk mk-gps"></span><div id="txtGps">GPS: sin posición todavía</div></div>
+            <div class="ubic-fila"><span class="mk mk-wifi"></span><div id="txtWifi">Wi-Fi: sin datos</div></div>
+          </div>
+          <div class="fila-btns">
+            <a class="btn" id="lnkMaps" target="_blank" rel="noopener">Abrir en Google Maps</a>
+            <a class="btn btn-sec" id="lnkRuta" target="_blank" rel="noopener">Cómo llegar</a>
+            <button class="btn btn-sec" id="btnBuscar">Hacer sonar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Señal Wi-Fi del dispositivo</h3>
+        <div class="wifi-box" data-wifi="mini"></div>
+      </div>
+
+      <h2>Próximas rutinas</h2>
+      <div id="proximas" class="lista"></div>
+      <h2>Alertas sin atender</h2>
+      <div id="pendientes" class="lista"></div>
+    </section>
+
+    <!-- RUTINAS -->
+    <section class="vista" id="v-rutinas" hidden>
+      <div class="sub-head">
+        <div><div class="fecha" id="fechaHoy"></div><div class="muted" id="resumenHoy"></div></div>
+        <button class="btn" id="btnNuevaRutina">+ Nueva</button>
+      </div>
+      <div id="listaRutinas" class="lista"></div>
+      <p class="nota">A la hora de cada rutina, el dispositivo suena y llega una notificación. La persona confirma con el botón; si nadie confirma a tiempo, se avisa a los encargados.</p>
+    </section>
+
+    <!-- ALERTAS -->
+    <section class="vista" id="v-alertas" hidden>
+      <div class="chips" id="filtros">
+        <button class="chip on" data-f="todas">Todas</button>
+        <button class="chip" data-f="ayuda">Pánico</button>
+        <button class="chip" data-f="perimetro">Perímetro</button>
+        <button class="chip" data-f="recordatorios">Recordatorios</button>
+        <button class="chip" data-f="comunicacion">Conexión</button>
+      </div>
+      <div id="listaAlertas" class="lista"></div>
+    </section>
+
+    <!-- REPORTES -->
+    <section class="vista" id="v-reportes" hidden>
+      <div class="seg" id="segPeriodo"><button class="on" data-d="7">Semana</button><button data-d="30">Mes</button></div>
+      <div class="card"><h3>Cumplimiento de actividades</h3><div class="muted small">Porcentaje de recordatorios confirmados por día</div><div id="grafBarras" class="graf"></div></div>
+      <div class="card">
+        <h3>Eventos de seguridad / alertas</h3>
+        <div class="leyenda">
+          <span><i style="background:var(--rojo)"></i>Pánico</span><span><i style="background:var(--ambar)"></i>Perímetro</span>
+          <span><i style="background:var(--gris)"></i>Recordatorio no confirmado</span><span><i style="background:var(--azul)"></i>Sin comunicación</span>
+        </div>
+        <div id="grafLineas" class="graf"></div>
+      </div>
+      <div class="card"><div id="totales" class="totales"></div></div>
+      <button class="btn btn-grande" id="btnPDF"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Generar informe PDF</button>
+    </section>
+
+    <!-- AJUSTES -->
+    <section class="vista" id="v-ajustes" hidden>
+      <div class="card">
+        <h3>Notificaciones en este dispositivo</h3>
+        <div class="notif-box" data-notif></div>
+      </div>
+
+      <div class="card">
+        <h3>Dispositivos que reciben avisos</h3>
+        <div id="listaSubs" class="lista"></div>
+      </div>
+
+      <div class="card">
+        <h3>Perímetro por señal Wi-Fi</h3>
+        <div class="wifi-box" data-wifi></div>
+      </div>
+
+      <div class="card">
+        <h3>Ubicación de la casa (Wi-Fi)</h3>
+        <div class="casa-box" data-casa></div>
+      </div>
+
+      <form class="card form" id="formGeneral">
+        <h3>Persona y tiempos</h3>
+        <label>Nombre de la persona<input id="cfgPaciente" maxlength="60"></label>
+        <div class="dos">
+          <label>Minutos para confirmar una rutina<input id="cfgMin" type="number" min="1"></label>
+          <label>Segundos sin señal = desconexión<input id="cfgSeg" type="number" min="30" step="10"></label>
+        </div>
+        <button class="btn" type="submit">Guardar</button>
+      </form>
+
+      <div class="card">
+        <h3>Conexión del prototipo</h3>
+        <p class="small">En el firmware del ESP32:</p>
+        <pre class="mono codigo" id="infoServidor"></pre>
+        <p class="small muted" id="infoAlmacen" style="overflow-wrap:anywhere"></p>
+      </div>
+
+      <form class="card form" id="formClave">
+        <h3>Seguridad</h3>
+        <div class="dos">
+          <label>Clave actual<input id="clActual" type="password" autocomplete="current-password" required></label>
+          <label>Clave nueva<input id="clNueva" type="password" minlength="6" autocomplete="new-password" required></label>
+        </div>
+        <div class="fila-btns"><button class="btn btn-sec" type="submit">Cambiar clave</button><button class="btn btn-sec" type="button" id="btnSalir">Cerrar sesión</button></div>
+      </form>
+
+      <div class="card">
+        <h3>Datos de demostración</h3>
+        <p class="small" id="txtDemo">Carga 14 días de historial de ejemplo para practicar la presentación. Queda marcado como demostración.</p>
+        <div class="fila-btns"><button class="btn btn-sec" id="btnCargarDemo">Cargar demostración</button><button class="btn btn-danger" id="btnBorrarDemo">Borrar demostración</button></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" id="tabs">
+    <button data-v="inicio" class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Inicio</button>
+    <button data-v="rutinas"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>Rutinas</button>
+    <button data-v="alertas"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg>Alertas<b class="punto" id="puntoAlertas" hidden></b></button>
+    <button data-v="reportes"><svg viewBox="0 0 24 24"><path d="M5 20V12M12 20V5M19 20v-9"/></svg>Reportes</button>
+  </nav>
+</div>
+
+<dialog id="dlgRutina">
+  <form method="dialog" class="form" id="formRutina">
+    <h3 id="dlgTitulo">Nueva rutina</h3>
+    <label>Tipo<select id="rtTipo"><option value="medicamento">Medicamento</option><option value="aseo">Aseo personal</option><option value="caminata">Caminata</option><option value="comida">Comida</option><option value="otro">Otro</option></select></label>
+    <label>Nombre<input id="rtTitulo" required maxlength="60" placeholder="Ej. Donepezilo"></label>
+    <label>Detalle<input id="rtDetalle" maxlength="60" placeholder="Ej. 5 mg"></label>
+    <label>Hora<input id="rtHora" type="time" required></label>
+    <fieldset class="dias" id="rtDias"><legend>Días</legend></fieldset>
+    <div class="fila-btns"><button class="btn" value="ok">Guardar</button><button class="btn btn-sec" value="cancel" formnovalidate>Cancelar</button></div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<article id="informe" class="informe"></article>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

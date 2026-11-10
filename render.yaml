@@ -1,0 +1,23 @@
+# Despliegue en Render (plan gratuito). En Render: New → Blueprint → elige este repositorio.
+services:
+  - type: web
+    name: localizador-g7
+    runtime: python
+    plan: free
+    rootDir: servidor
+    buildCommand: pip install -r requirements.txt
+    startCommand: python servidor.py
+    healthCheckPath: /api/tick
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: ZONA_HORARIA_HORAS
+        value: "-6"
+      - key: FIREBASE_URL
+        sync: false        # https://<proyecto>-default-rtdb.firebaseio.com
+      - key: FIREBASE_CUENTA_SERVICIO
+        sync: false        # pega todo el contenido del JSON de la cuenta de servicio
+      - key: CLAVE_DISPOSITIVO
+        sync: false        # inventa una clave; la misma va en el firmware
+      - key: CONTACTO_VAPID
+        sync: false        # mailto:correo-del-grupo@ejemplo.com

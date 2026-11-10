@@ -1,0 +1,15 @@
+# Render gratuito se duerme tras 15 min sin visitas. Esto lo visita cada 10 min
+# para que siga revisando las rutinas y la conexión aunque el dispositivo esté apagado.
+# Configura la variable URL_SERVIDOR en: Settings → Secrets and variables → Actions → Variables.
+name: Mantener despierto el servidor
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+jobs:
+  despertar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Visitar /api/tick
+        run: curl -fsS --max-time 120 "${{ vars.URL_SERVIDOR }}/api/tick" || echo "El servidor no respondió esta vez"

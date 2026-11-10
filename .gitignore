@@ -1,0 +1,7 @@
+servidor/datos.json
+servidor/datos.json.tmp
+__pycache__/
+*.pyc
+# Nunca subas la llave de Firebase al repositorio
+*firebase-adminsdk*.json
+cuenta-servicio*.json
