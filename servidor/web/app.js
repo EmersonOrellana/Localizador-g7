@@ -184,8 +184,13 @@ async function cargarEstado() {
 function textoPerimetro(e) {
   const w = e.wifi;
   if (w.umbral == null) return "Perímetro Wi-Fi sin calibrar";
-  if (w.rssi == null) return `Límite ${w.umbral} dBm`;
-  return `Señal Wi-Fi ${Math.round(w.rssi)} dBm · límite ${w.umbral} dBm`;
+  let calidad = "Excelente";
+  if (w.rssi != null) {
+    if (w.rssi < -85) calidad = "Débil";
+    else if (w.rssi < -70) calidad = "Regular";
+  }
+  const limiteTexto = e.modo_limite || "Configurado";
+  return `Señal Wi-Fi: ${calidad} · límite: ${limiteTexto}`;
 }
 
 function pintarInicio() {
@@ -195,7 +200,7 @@ function pintarInicio() {
   let clase = "", ico = IC.check, tit, sub, meta = [];
   if (e.sos) { clase = "alerta"; ico = IC.bell; tit = "Ayuda solicitada"; sub = `Botón de pánico · ${hora(e.sos.ts)}`; }
   else if (!d.visto) { clase = "neutro"; ico = IC.wait; tit = "Esperando al dispositivo"; sub = "Enciende el prototipo y conéctalo al Wi-Fi."; }
-  else if (!d.conectado) { clase = "neutro"; ico = IC.wifiOff; tit = "Sin comunicación"; sub = "Verifica a la persona"; meta.push(`Última señal hace ${hace(d.segundos_desde)}${e.wifi.rssi != null ? ` con Wi-Fi a ${Math.round(e.wifi.rssi)} dBm` : ""}.`); }
+  else if (!d.conectado) { clase = "neutro"; ico = IC.wifiOff; tit = "Sin comunicación"; sub = "Verifica a la persona"; meta.push(`Última señal hace ${hace(d.segundos_desde)}.`); }
   else if (e.perimetro === "fuera") { clase = "aviso"; ico = IC.warn; tit = "Fuera del perímetro"; sub = "La señal Wi-Fi está bajo el límite"; meta.push(textoPerimetro(e) + (e.silenciado ? " · alarma silenciada" : "")); }
   else if (e.wifi.umbral == null) { clase = "neutro"; ico = IC.wifi; tit = "Perímetro sin calibrar"; sub = "Calíbralo con la señal del Wi-Fi de la casa"; }
   else { tit = "Paciente seguro"; sub = "Dentro del alcance del Wi-Fi"; meta.push(textoPerimetro(e)); }
@@ -221,7 +226,7 @@ function pintarInicio() {
     const viejo = d.fix ? "" : " · última conocida";
     $("#txtGps").innerHTML = `<b>GPS</b> ${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}<br><span class="muted">${esc(diaRel(p.ts))} ${esc(hora(p.ts))}${viejo}${p.sim ? " · simulada" : ""}</span>`;
   } else $("#txtGps").innerHTML = "<b>GPS</b> sin posición todavía";
-  $("#txtWifi").innerHTML = `<b>Wi-Fi</b> ${esc(d.ssid || "sin datos")}${e.wifi.rssi != null ? ` · ${Math.round(e.wifi.rssi)} dBm` : ""}<br><span class="muted">${c ? `Casa en ${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` : "Ubicación de la casa sin definir"}</span>`;
+  $("#txtWifi").innerHTML = `<b>Wi-Fi</b> ${esc(d.ssid || "sin datos")}<br><span class="muted">${c ? `Casa en ${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` : "Ubicación de la casa sin definir"}</span>`;
   const objetivo = p || c;
   const url = objetivo ? enlaceMaps(objetivo.lat, objetivo.lng) : "https://www.google.com/maps";
   $("#lnkMaps").href = url; $("#mapaLink").href = url;
@@ -239,17 +244,31 @@ function pintarInicio() {
 }
 
 /* Mapa fijo: no se puede mover ni hacer zoom; tocarlo abre Google Maps */
+/* Mapa fijo centrado con botones de zoom */
 function pintarMapa() {
   const e = S.estado, cont = $("#mapa");
   const p = e.posicion, c = e.casa;
   if (!window.L) { cont.textContent = p || c ? "Mapa no disponible. Toca para abrir Google Maps." : "El mapa aparecerá con la primera posición GPS o al definir la casa."; return; }
   if (!p && !c) { cont.textContent = "El mapa aparecerá con la primera posición GPS o al definir la casa."; return; }
+  
   if (!S.mapa) {
     cont.textContent = "";
-    S.mapa = L.map(cont, { dragging: false, touchZoom: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false,
-      keyboard: false, zoomControl: false, tap: false, attributionControl: true, zoomSnap: 0.5 });
+    // Se habilita zoomControl: true pero se mantienen bloqueados el arrastre (dragging) y zooms táctiles para mantener el centrado estricto
+    S.mapa = L.map(cont, { 
+      dragging: false, 
+      touchZoom: false, 
+      scrollWheelZoom: false, 
+      doubleClickZoom: false, 
+      boxZoom: false,
+      keyboard: false, 
+      zoomControl: true, 
+      tap: false, 
+      attributionControl: true, 
+      zoomSnap: 0.5 
+    });
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(S.mapa);
   }
+
   const color = e.sos ? "#C8323C" : e.perimetro === "fuera" ? "#D99A0B" : "#1E7A4C";
   if (p) {
     if (!S.capas.gps) S.capas.gps = L.circleMarker([p.lat, p.lng], { radius: 9, weight: 3, color: "#fff", fillOpacity: 1, interactive: false }).addTo(S.mapa);
@@ -259,12 +278,18 @@ function pintarMapa() {
     if (!S.capas.casa) S.capas.casa = L.marker([c.lat, c.lng], { interactive: false, icon: L.divIcon({ className: "", html: `<div class="pin-casa">${IC.casa}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) }).addTo(S.mapa);
     S.capas.casa.setLatLng([c.lat, c.lng]);
   }
+
   const puntos = [p, c].filter(Boolean).map((x) => [x.lat, x.lng]);
   const clave = puntos.map((x) => x.map((v) => v.toFixed(5)).join()).join("|");
+
+  // Re-centra automáticamente si cambia la ubicación
   if (clave !== S.capas.vista) {
     S.capas.vista = clave;
-    if (puntos.length === 2 && S.mapa.distance(puntos[0], puntos[1]) > 25) S.mapa.fitBounds(puntos, { padding: [36, 36], maxZoom: 18 });
-    else S.mapa.setView(puntos[0], 18);
+    if (puntos.length === 2 && S.mapa.distance(puntos[0], puntos[1]) > 25) {
+      S.mapa.fitBounds(puntos, { padding: [36, 36], maxZoom: 18 });
+    } else {
+      S.mapa.setView(puntos[0], 18);
+    }
   }
 }
 
@@ -283,19 +308,28 @@ const pos = (v) => `${Math.max(0, Math.min(100, ((v - RMIN) / (RMAX - RMIN)) * 1
 function pintarWifi(box) {
   const e = S.estado, w = e.wifi, d = e.dispositivo, mini = box.dataset.wifi === "mini";
   const actual = w.rssi != null && d.conectado;
-  let html = `<div class="wifi-num"><span>${esc(d.ssid || "Wi-Fi")}${actual ? "" : " · sin datos recientes"}</span><b>${actual ? Math.round(w.rssi) + " dBm" : "–"}</b></div>
+  
+  let calidad = "Sin datos";
+  if (actual) {
+    if (w.rssi >= -65) calidad = "Excelente";
+    else if (w.rssi >= -75) calidad = "Buena";
+    else if (w.rssi >= -85) calidad = "Regular";
+    else calidad = "Débil";
+  }
+
+  let html = `<div class="wifi-num"><span>${esc(d.ssid || "Wi-Fi")}${actual ? "" : " · sin datos recientes"}</span><b>${actual ? calidad : "–"}</b></div>
     <div class="medidor">${w.umbral != null ? `<span class="limite" style="left:${pos(w.umbral)}" title="Límite"></span>` : ""}${actual ? `<span class="valor" style="left:${pos(w.rssi)}"></span>` : ""}</div>
-    <div class="medidor-esc"><span>débil −95</span><span>${w.umbral != null ? "límite " + w.umbral + " dBm" : "sin límite"}</span><span>−35 fuerte</span></div>`;
+    <div class="medidor-esc"><span>débil</span><span>${w.umbral != null ? "límite" : "sin límite"}</span><span>fuerte</span></div>`;
   if (!mini) {
     const cfgActual = S.config ? S.config.wifi_umbral : w.umbral;
     const presets = S.config ? S.config.presets : { casa: -67, patio: -75, calle: -82 };
     html += `${!d.conectado ? `<div class="aviso-mini">El dispositivo no está conectado. Enciéndelo para medir la señal.</div>` : w.calibrando ? `<div class="muted small">Midiendo cada 3 s durante la calibración.</div>` : ""}
-      <button class="btn" data-fijar ${actual ? "" : "disabled"}>Fijar límite aquí (señal actual − 3 dB)</button>
+      <button class="btn" data-fijar ${actual ? "" : "disabled"}>Fijar límite aquí</button>
       <div class="muted small">O elige un alcance aproximado:</div>
       <div class="presets">
-        <button class="btn btn-sec ${cfgActual === presets.casa ? "on" : ""}" data-preset="casa">Solo la casa<small>${presets.casa} dBm</small></button>
-        <button class="btn btn-sec ${cfgActual === presets.patio ? "on" : ""}" data-preset="patio">Casa y patio<small>${presets.patio} dBm</small></button>
-        <button class="btn btn-sec ${cfgActual === presets.calle ? "on" : ""}" data-preset="calle">Hasta la acera<small>${presets.calle} dBm</small></button>
+        <button class="btn btn-sec ${cfgActual === presets.casa ? "on" : ""}" data-preset="casa">Solo la casa</button>
+        <button class="btn btn-sec ${cfgActual === presets.patio ? "on" : ""}" data-preset="patio">Casa y patio</button>
+        <button class="btn btn-sec ${cfgActual === presets.calle ? "on" : ""}" data-preset="calle">Hasta la acera</button>
       </div>`;
   } else if (w.umbral == null) {
     html += `<div class="aviso-mini">Calibra el perímetro en Ajustes para activar las alertas.</div>`;
@@ -308,7 +342,7 @@ document.addEventListener("click", async (ev) => {
   try {
     const r = await api("/api/perimetro", { method: "POST", body: f ? { modo: "actual" } : { modo: p.dataset.preset } });
     if (S.config) S.config.wifi_umbral = r.umbral;
-    toast(`Límite del perímetro: ${r.umbral} dBm`);
+    toast(`Límite del perímetro actualizado.`);
     await cargarEstado();
   } catch (e) { toast(e.message); }
 });
