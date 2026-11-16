@@ -34,8 +34,8 @@
 #include <TinyGPSPlus.h>
 
 // ===================== CONFIGURACIÓN =====================
-const char* WIFI_SSID = "TU_RED_WIFI";
-const char* WIFI_PASS = "TU_CLAVE";
+const char* WIFI_SSID = "TU_WIFI";  // nombre de tu Wi-Fi (solo 2.4 GHz)
+const char* WIFI_PASS = "TU_PASS";  // contraseña de tu Wi-Fi
 // Dirección de la app en Render (sin "/" al final). En Ajustes de la app aparece.
 const char* SERVIDOR = "https://localizador-g7.onrender.com";
 const char* CLAVE_DISPOSITIVO = "LA_MISMA_DE_RENDER";   // variable CLAVE_DISPOSITIVO en Render
@@ -46,7 +46,7 @@ const char* ID_DISPOSITIVO = "G7-01";
 #define PIN_BOTON  18
 #define PIN_BUZZER 19
 
-const bool BUZZER_PASIVO       = false;  // true si solo suena con tone()
+const bool BUZZER_PASIVO       = true;  // true si solo suena con tone()
 const bool BUZZER_SUENA_EN_LOW = false;  // true si tu módulo suena con LOW
 
 const unsigned long INTERVALO_PRESENCIA_MS = 30000;  // diseño: 30 s
