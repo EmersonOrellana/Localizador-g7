@@ -8,20 +8,10 @@ La app ya no depende de una computadora en la casa. Se entra desde cualquier cel
       ▼
  Render (servidor.py, gratis) ───────────▶ Firebase Realtime Database (los datos, gratis)
       │
-      ├──▶ App web: https://<tu-app>.onrender.com (clave de acceso)
+      ├──▶ App web: https://localizador-g7.onrender.com/ (clave de acceso)
       └──▶ Notificaciones push a cada celular que dio permiso
  GitHub Actions lo visita cada 10 min para que no se duerma
 ```
-
-## Qué cambió respecto a la versión local
-
-| Pedido | Cómo quedó |
-|---|---|
-| El mapa muestra solo el GPS y el Wi-Fi | Dos marcas: el **GPS del dispositivo** y la **casa (Wi-Fi conectado)**. Ya no se dibuja el recorrido. |
-| El mapa no se puede mover, pero siempre se puede abrir en Maps | Sin arrastre ni zoom. Tocar el mapa o "Abrir en Google Maps" siempre funciona: usa el GPS; sin GPS, la casa; sin ninguno, abre Maps. También hay un botón "Cómo llegar". |
-| Perímetro por la intensidad del Wi-Fi, configurado al entrar | El límite se calibra en la app: "Fijar límite aquí" o uno de tres alcances. No se toca el código. |
-| Que no sea local y que avise antes de entrar si el dispositivo está conectado | Está publicada en Render. La pantalla de entrada muestra el estado del dispositivo antes de pedir la clave. |
-| Sin Telegram: solo pedir permiso de notificaciones | Se pidió permiso de notificaciones del navegador para emergencias, perímetro, pérdida de comunicación y rutinas. Cada encargado elige qué avisos recibe. |
 
 ### Cómo funciona el perímetro por Wi-Fi
 - El ESP32 mide la señal del Wi-Fi (RSSI, en dBm) cada 2 s y promedia los últimos 8 valores, porque la señal varía sola.
@@ -30,47 +20,6 @@ La app ya no depende de una computadora en la casa. Se entra desde cualquier cel
 - En la app, la pérdida de comunicación se clasifica según la última señal recibida:
   - si ya estaba débil, cerca del límite: "posible salida de la casa";
   - si era buena: "puede estar apagado". Así se mantiene la regla del documento de no confundir desconexión con salida.
-
----
-
-## Publicarla paso a paso (todo gratis, sin tarjeta)
-
-### 1. GitHub
-1. Crea un repositorio **público** (por ejemplo `localizador-g7`) y sube todo el contenido de esta carpeta. Tiene que ser público para que GitHub Actions sea gratis sin límite de minutos. No hay ninguna clave en los archivos.
-2. **Nunca subas** el JSON de Firebase. El `.gitignore` ya lo excluye.
-
-### 2. Firebase
-1. Entra a [console.firebase.google.com](https://console.firebase.google.com) → **Agregar proyecto** (puedes desactivar Analytics).
-2. **Compilación → Realtime Database → Crear base de datos** → elige una ubicación → **Comenzar en modo bloqueado**. El servidor entra como administrador, así que nadie más puede leer los datos.
-3. Copia la URL de la base, por ejemplo `https://localizador-g7-default-rtdb.firebaseio.com`.
-4. **⚙ Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada**. Se descarga un archivo `.json`; guárdalo en un lugar seguro.
-
-### 3. Render
-1. Entra a [render.com](https://render.com) con tu cuenta de GitHub → **New → Blueprint** → elige el repositorio. Render lee `render.yaml`.
-2. Llena las variables:
-   - `FIREBASE_URL`: la URL del paso 2.3.
-   - `FIREBASE_CUENTA_SERVICIO`: abre el `.json` con el Bloc de notas y pega **todo** su contenido.
-   - `CLAVE_DISPOSITIVO`: inventa una, por ejemplo `G7-lampara-azul-2026`. La misma va en el firmware y se pide la primera vez que se entra a la app.
-   - `CONTACTO_VAPID`: `mailto:` seguido del correo del grupo. Lo exigen los servicios de notificaciones.
-3. **Apply**. Al terminar, Render muestra la dirección, por ejemplo `https://localizador-g7.onrender.com`.
-
-### 4. Mantenerla despierta
-En el repositorio de GitHub: **Settings → Secrets and variables → Actions → pestaña Variables → New variable**
-- Nombre `URL_SERVIDOR`, valor la dirección de Render.
-- Luego, en **Actions**, habilita los workflows. "Mantener despierto el servidor" corre cada 10 min.
-
-### 5. Firmware
-Abre `firmware/localizador_g7_nube/localizador_g7_nube.ino` y cambia `WIFI_SSID`, `WIFI_PASS`, `SERVIDOR` (la dirección de Render) y `CLAVE_DISPOSITIVO`. Cárgalo y mira el monitor serie: la autoprueba debe terminar con "App en nube .. OK". La primera vez puede tardar hasta un minuto si Render estaba dormido.
-
-### 6. Primera entrada
-1. Abre la dirección de Render. Escribe la clave del dispositivo, el nombre de la persona y una **clave de acceso** para los encargados.
-2. El asistente pide, en orden:
-   - **Notificaciones:** elige quién recibe en ese celular (familiar, doctor, cuidador) y qué avisos acepta, y toca **Permitir notificaciones**.
-   - **Perímetro Wi-Fi:** con el dispositivo encendido, llévalo al borde de la zona segura (la puerta o el portón), espera unos 10 s a que se estabilice la señal y toca **Fijar límite aquí**. También puedes elegir "Solo la casa", "Casa y patio" o "Hasta la acera".
-   - **Casa:** toca "Usar mi ubicación (estoy en la casa)", que pide permiso de ubicación al celular, o "Usar el GPS del dispositivo".
-3. Cada encargado abre la misma dirección en su celular, entra con la clave y activa sus notificaciones en **Ajustes**.
-   - **iPhone:** primero Compartir → **Agregar a inicio**, y abrir la app desde ese ícono. Requiere iOS 16.4 o más reciente.
-   - **Android/Chrome:** funciona directo. También se puede instalar desde el menú → "Instalar app".
 
 ---
 

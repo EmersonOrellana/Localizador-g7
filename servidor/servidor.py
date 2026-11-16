@@ -1,22 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Servidor en la nube · Localizador GPS para personas con Alzheimer
-Grupo 7 · Tema 7 · ARC115 · Ciclo II-2026
 
-- Recibe la presencia y los eventos del ESP32 por internet (HTTPS en Render).
-- Perímetro de cuidado por intensidad de la señal Wi-Fi (calibrado desde la app).
-- Agenda de rutinas, detección de desconexión y notificaciones Web Push.
-- Guarda todo en Firebase Realtime Database (o en datos.json para pruebas locales).
-
-Variables de entorno (en Render):
-  FIREBASE_URL              https://<proyecto>-default-rtdb.firebaseio.com
-  FIREBASE_CUENTA_SERVICIO  contenido del JSON de la cuenta de servicio
-  CLAVE_DISPOSITIVO         clave que usa el ESP32 y que se pide para configurar la app
-  CONTACTO_VAPID            mailto:correo-del-grupo  (lo exigen los servicios de notificaciones)
-  ZONA_HORARIA_HORAS        -6 para El Salvador
-Uso local:  python servidor.py   [--puerto 8000] [--demo]
-"""
 import argparse
 import hashlib
 import hmac
