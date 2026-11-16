@@ -5,3 +5,6 @@ __pycache__/
 # Nunca subas la llave de Firebase al repositorio
 *firebase-adminsdk*.json
 cuenta-servicio*.json
+
+# Configuración local de VS Code (rutas propias de cada PC)
+.vscode/
